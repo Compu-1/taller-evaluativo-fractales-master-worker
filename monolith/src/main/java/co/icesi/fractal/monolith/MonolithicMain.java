@@ -1,29 +1,57 @@
 package co.icesi.fractal.monolith;
 
+import co.icesi.fractal.core.FractalRegion;
 import co.icesi.fractal.core.MandelbrotCore;
 import java.io.IOException;
 
 /**
  * Implementacion Monolitica Secuencial del Renderizador de Mandelbrot.
  * Opera en un solo hilo sobre una sola CPU, sirviendo como linea base (T_sec).
+ * 
+ * Permite evaluar configuraciones 4K, 5,000 iteraciones y presets de estres
+ * como Seahorse Valley (Valle de los Caballitos de Mar).
  */
 public class MonolithicMain {
 
     public static void main(String[] args) {
-        int width = (args.length >= 1) ? Integer.parseInt(args[0]) : 1920;
-        int height = (args.length >= 2) ? Integer.parseInt(args[1]) : 1080;
-        int maxIter = (args.length >= 3) ? Integer.parseInt(args[2]) : 3000;
-        String outputPath = (args.length >= 4) ? args[3] : "output/mandelbrot_monolith.png";
+        int width = (args.length >= 1) ? Integer.parseInt(args[0]) : 3840;
+        int height = (args.length >= 2) ? Integer.parseInt(args[1]) : 2160;
+        int maxIter = (args.length >= 3) ? Integer.parseInt(args[2]) : 5000;
 
-        double xMin = -2.0, xMax = 0.5;
-        double yMin = -1.25, yMax = 1.25;
+        String presetName = "seahorse";
+        String outputPath = "output/mandelbrot_monolith.png";
+
+        if (args.length >= 4) {
+            if (args[3].endsWith(".png") || args[3].contains("/") || args[3].contains("\\")) {
+                outputPath = args[3];
+            } else {
+                presetName = args[3];
+                if (args.length >= 5) {
+                    outputPath = args[4];
+                }
+            }
+        }
+
+        FractalRegion region = FractalRegion.fromName(presetName);
+        double xMin = region.getXMin();
+        double xMax = region.getXMax();
+        double yMin = region.getYMin();
+        double yMax = region.getYMax();
+
+        // Ajuste isometrico de aspecto para evitar deformaciones
+        if (width > 0 && height > 0) {
+            double aspect = (double) width / (double) height;
+            double realHeight = yMax - yMin;
+            xMax = xMin + realHeight * aspect;
+        }
 
         System.out.println("=================================================");
         System.out.println("      RENDERIZADO MONOLITICO SECUENCIAL");
         System.out.println("=================================================");
-        System.out.printf("Dimensiones: %dx%d (%d pixeles)%n", width, height, (long) width * height);
-        System.out.printf("Plano Complejo: X=[%.2f, %.2f], Y=[%.2f, %.2f]%n", xMin, xMax, yMin, yMax);
-        System.out.printf("Profundidad: %d iteraciones maximas por pixel%n", maxIter);
+        System.out.printf("Preset / Región:       %s (%s)%n", region.getName(), region.getId());
+        System.out.printf("Dimensiones:           %dx%d (%d pixeles)%n", width, height, (long) width * height);
+        System.out.printf("Plano Complejo:        X=[%.6f, %.6f], Y=[%.6f, %.6f]%n", xMin, xMax, yMin, yMax);
+        System.out.printf("Profundidad:           %d iteraciones maximas por pixel%n", maxIter);
         System.out.println("Iniciando computo en monohilo...");
 
         long startTime = System.currentTimeMillis();

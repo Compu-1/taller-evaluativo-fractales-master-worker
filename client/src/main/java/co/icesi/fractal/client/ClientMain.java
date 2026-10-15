@@ -1,6 +1,7 @@
 package co.icesi.fractal.client;
 
 import FractalApp.*;
+import co.icesi.fractal.core.FractalRegion;
 import co.icesi.fractal.core.MandelbrotCore;
 import com.zeroc.Ice.*;
 import java.io.IOException;
@@ -20,15 +21,38 @@ public class ClientMain {
     public static void main(String[] args) {
         String masterHost = (args.length >= 1) ? args[0] : "localhost";
         int masterPort = (args.length >= 2) ? Integer.parseInt(args[1]) : 10000;
-        int width = (args.length >= 3) ? Integer.parseInt(args[2]) : 1920;
-        int height = (args.length >= 4) ? Integer.parseInt(args[3]) : 1080;
-        int maxIter = (args.length >= 5) ? Integer.parseInt(args[4]) : 3000;
+        int width = (args.length >= 3) ? Integer.parseInt(args[2]) : 3840;
+        int height = (args.length >= 4) ? Integer.parseInt(args[3]) : 2160;
+        int maxIter = (args.length >= 5) ? Integer.parseInt(args[4]) : 5000;
         int strategyType = (args.length >= 6) ? Integer.parseInt(args[5]) : 1; // 1 = FixedTileSize por defecto
         int strategyParam = (args.length >= 7) ? Integer.parseInt(args[6]) : 64; // Baldosas de 64x64 por defecto
-        String outputPath = (args.length >= 8) ? args[7] : "output/mandelbrot_distribuido.png";
+        
+        String presetName = "seahorse";
+        String outputPath = "output/mandelbrot_distribuido.png";
 
-        double xMin = -2.0, xMax = 0.5;
-        double yMin = -1.25, yMax = 1.25;
+        if (args.length >= 8) {
+            if (args[7].endsWith(".png") || args[7].contains("/") || args[7].contains("\\")) {
+                outputPath = args[7];
+            } else {
+                presetName = args[7];
+                if (args.length >= 9) {
+                    outputPath = args[8];
+                }
+            }
+        }
+
+        FractalRegion region = FractalRegion.fromName(presetName);
+        double xMin = region.getXMin();
+        double xMax = region.getXMax();
+        double yMin = region.getYMin();
+        double yMax = region.getYMax();
+
+        // Ajuste isometrico de aspecto
+        if (width > 0 && height > 0) {
+            double aspect = (double) width / (double) height;
+            double realHeight = yMax - yMin;
+            xMax = xMin + realHeight * aspect;
+        }
 
         InitializationData initData = new InitializationData();
         initData.properties = Util.createProperties(args);
@@ -49,7 +73,9 @@ public class ClientMain {
             System.out.println("=================================================");
             System.out.printf("Conectado a Master:    %s%n", masterEndpoint);
             System.out.printf("Workers en el clúster: %d nodo(s) activo(s)%n", workerCount);
+            System.out.printf("Preset / Región:       %s (%s)%n", region.getName(), region.getId());
             System.out.printf("Dimensiones imagen:    %dx%d (%d px)%n", width, height, (long) width * height);
+            System.out.printf("Plano Complejo:        X=[%.6f, %.6f], Y=[%.6f, %.6f]%n", xMin, xMax, yMin, yMax);
             System.out.printf("Max. Iteraciones:      %d%n", maxIter);
             System.out.printf("Estrategia elegida:    %s (Parametro = %d)%n",
                 (strategyType == 0 ? "FixedCount (N franjas)" : "FixedTileSize (Baldosas)"), strategyParam);
